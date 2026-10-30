@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@import "./fonts.css";
+@import "./theme.css";
+@import "./collection.css";
+@import "./forms.css";
+@import "./reading.css";
+@import "./planner.css";
+@import "./goal-metrics.css";
+@import "./routines.css";
+@import "./day-flow.css";
+@import "./partner.css";
+@import "./task-sharing.css";
+@import "./task-photos.css";
+@import "./account.css";
+@import "./memory.css";
+@import "./batch-planning.css";

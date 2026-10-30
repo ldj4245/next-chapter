@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:32px 20px;background:#f7f7f5;font-family:Arial,sans-serif;color:#34342f;">
+  <div style="max-width:480px;margin:auto;background:white;padding:32px;border-radius:8px;">
+    <p style="color:#707065;font-size:13px;">다음 장</p>
+    <h1 style="font-size:24px;">비밀번호 재설정</h1>
+    <p style="font-size:15px;line-height:1.8;">아래 버튼에서 새 비밀번호를 설정해주세요.<br>기존 서재와 하루 기록은 그대로 유지돼요.</p>
+    <p style="margin:28px 0;"><a href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}" style="display:inline-block;background:#34342f;color:white;text-decoration:none;padding:14px 22px;border-radius:5px;">새 비밀번호 설정</a></p>
+    <p style="color:#707065;font-size:13px;line-height:1.8;">본인이 요청한 메일이 아니라면 무시해주세요.<br>이미 사용했거나 만료된 링크는 로그인 화면에서 다시 받을 수 있어요.</p>
+  </div>
+</body></html>

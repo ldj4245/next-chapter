@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFile,readdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { prepareStorage } from './storage-fixture.mjs';
+test('학습 자료·영상 구간의 소유권, 재시도, 수정 충돌, 검색과 계정 삭제 보존',async()=>{
+  const db=new PGlite();
+  try{
+    await db.exec("create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to authenticated;");
+    await prepareStorage(db);const folder=new URL('../supabase/migrations/',import.meta.url);for(const name of(await readdir(folder)).filter(name=>name.endsWith('.sql')).sort())await db.exec(await readFile(new URL(name,folder),'utf8'));
+    const alice=randomUUID(),bob=randomUUID(),resource=randomUUID(),video=randomUUID(),bookmark=randomUUID(),peer=randomUUID(),book=randomUUID();
+    const as=async owner=>{await db.exec('reset role;set role authenticated;');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[owner]);};
+    const rpc=async(name,args)=>(await db.query('select '+name+'('+args.map((_,i)=>'$'+(i+1)).join(',')+') as result',args)).rows[0].result;
+    const input=[resource,'https://example.com/article','한글%_\\ 자료','article','saved',['개발'],'  개인 메모\n끝  '];
+    await db.query('insert into auth.users values($1),($2)',[alice,bob]);await as(alice);
+    const first=await rpc('create_learning_resource',input);assert.equal(first.resource.memo,input[6]);assert.equal(first.resource.user_id,undefined);
+    assert.equal((await rpc('create_learning_resource',input)).resource.id,resource);
+    assert.equal((await rpc('create_learning_resource',[randomUUID(),...input.slice(1)])).duplicate,true);
+    await assert.rejects(rpc('create_learning_resource',[resource,...input.slice(1,6),'다른 초안']),e=>e.message==='RESOURCE_ID_CONFLICT');
+    const updated=await rpc('update_learning_resource',[resource,1,...input.slice(1,4),'active',input[5],'새 메모']);assert.equal(updated.revision,2);
+    await assert.rejects(rpc('update_learning_resource',[resource,1,...input.slice(1)]),e=>e.message==='RESOURCE_REVISION_CONFLICT');
+    assert.equal((await rpc('update_learning_resource',[resource,1,...input.slice(1,4),'active',input[5],'새 메모'])).revision,2,'Response-loss retry is a no-op');
+    const videoInput=[video,'https://www.youtube.com/watch?v=dQw4w9WgXcQ','영상 자료','video','saved',[],'영상 메모'];await rpc('create_learning_resource',videoInput);
+    const mark=await rpc('create_resource_bookmark',[bookmark,video,755,'한글%_\\ 구간']);assert.equal(mark.user_id,undefined);assert.equal((await rpc('create_resource_bookmark',[bookmark,video,755,mark.label])).id,bookmark);
+    await assert.rejects(rpc('create_resource_bookmark',[bookmark,video,755,'바뀐 내용']),e=>e.message==='BOOKMARK_ID_CONFLICT');
+    await assert.rejects(rpc('update_learning_resource',[video,1,'https://example.com/other',...videoInput.slice(2)]),e=>e.message==='RESOURCE_HAS_BOOKMARKS');
+    await assert.rejects(db.query('update learning_resources set memo=$1',['직접 바꾸기']));
+    await as(bob);assert.equal((await db.query('select * from learning_resources')).rows.length,0);assert.equal((await db.query('select * from resource_bookmarks')).rows.length,0);
+    await assert.rejects(rpc('create_resource_bookmark',[randomUUID(),video,5,'남의 영상']),e=>e.code==='P0002');
+    await assert.rejects(rpc('delete_learning_resource',[resource,2]),e=>e.code==='P0002');
+    await assert.rejects(rpc('create_learning_resource',[resource,'https://example.com/foreign','위조','article','saved',[],'']),e=>e.code==='P0002');
+    await rpc('create_learning_resource',[peer,...input.slice(1)]);
+    const peerSearch=await rpc('search_private_records',['한글%_\\','resources',0]);assert.deepEqual(peerSearch.results.map(row=>row.id),[peer]);
+    await as(alice);const search=await rpc('search_private_records',['한글%_\\','resources',0]);assert.deepEqual(new Set(search.results.map(row=>row.recordType)),new Set(['resource','resource_bookmark']));assert.ok(search.results.every(row=>row.group==='resources'&&!Object.hasOwn(row,'user_id')));
+    await db.query("insert into works(id,user_id,title,kind,status,summary) values($1,$2,'책','book','completed','이전 평')",[book,alice]);
+    await db.query("insert into notes(user_id,work_id,content) values($1,$2,'남겨둔 문장')",[alice,book]);
+    const verdict=await rpc('save_work_summary',[book,'새 한줄평','이전 평']);assert.equal(verdict.summary,'새 한줄평');assert.equal(verdict.status,'completed');assert.equal(verdict.user_id,undefined);
+    assert.equal((await rpc('save_work_summary',[book,'새 한줄평','이전 평'])).summary,'새 한줄평');
+    await assert.rejects(rpc('save_work_summary',[book,'오래된 초안','이전 평']),e=>e.message==='SUMMARY_CONFLICT');assert.equal((await db.query('select * from notes where work_id=$1',[book])).rows.length,1);
+    await as(bob);await assert.rejects(rpc('save_work_summary',[book,'남의 평','새 한줄평']),e=>e.code==='P0002');
+    await db.exec('reset role;set role anon;');for(const table of ['learning_resources','resource_bookmarks'])await assert.rejects(db.query('select * from '+table));await assert.rejects(rpc('save_work_summary',[book,'익명','새 한줄평']));
+    await as(alice);await assert.rejects(rpc('delete_learning_resource',[video,2]),e=>e.message==='RESOURCE_REVISION_CONFLICT');await rpc('delete_learning_resource',[video,1]);assert.equal((await db.query('select * from resource_bookmarks')).rows.length,0);
+    await db.exec('reset role;');await db.query('delete from auth.users where id=$1',[alice]);assert.equal((await db.query('select * from learning_resources where user_id=$1',[alice])).rows.length,0);assert.equal((await db.query('select * from learning_resources where user_id=$1',[bob])).rows.length,1);
+  }finally{await db.close();}
+});

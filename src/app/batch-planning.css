@@ -1,0 +1,22 @@
+.top-memo-trigger { border:0; background:none; }
+.batch-planning { margin:20px 0 0; border-top:1px solid var(--line); padding-top:7px; }
+.batch-planning>summary { color:var(--muted); font-size:13px; min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.batch-planning>summary:before { content:'›'; margin-right:8px; }
+.batch-planning[open]>summary:before { transform:rotate(90deg); }
+.batch-planning form>p { font-size:13px; color:var(--muted); margin:9px 0 12px; line-height:1.8; }
+.batch-task-option { display:flex; flex-direction:row; align-items:center; gap:10px; min-height:44px; font-size:14px; font-weight:400; padding-block:5px; }
+.batch-task-option input { width:18px; min-height:18px; height:18px; accent-color:var(--accent); flex-shrink:0; padding:0; }
+.batch-task-option>span { overflow-wrap:anywhere; }
+.batch-controls { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; margin-top:16px; }
+.batch-controls>label { font-size:13px; color:var(--muted); }
+.batch-controls>input { width:170px; font-size:16px; min-height:44px; }
+.batch-notice a { display:inline-flex; align-items:center; min-height:44px; color:var(--accent); text-decoration:underline; text-underline-offset:4px; }
+.past-record-link { display:flex; align-items:center; justify-content:flex-end; margin:4px 0 12px; }
+.past-record-link a { min-height:44px; display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); }
+.past-record-link a:hover { color:var(--accent); text-decoration:underline; text-underline-offset:4px; }
+.review-conflict { border-left:2px solid var(--line-strong); padding:12px 16px; margin-top:20px; font-size:13px; }
+.review-conflict>p { line-height:1.8; color:var(--muted); }
+.review-conflict details { margin:8px 0; }
+.review-conflict summary { min-height:44px; cursor:pointer; display:flex; align-items:center; }
+.review-conflict .reflection-content { max-height:260px; overflow:auto; margin-bottom:14px; }
+@media(max-width:640px){.batch-controls{align-items:flex-start}.batch-controls>label{flex-basis:100%}.batch-controls>button{max-width:100%;white-space:normal}.review-conflict{padding-left:12px}}

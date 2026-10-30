@@ -1,0 +1,58 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+
+test('독서 RPC는 시간·완료·책갈피·문장을 원자적으로 저장하고 사용자별로 격리', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec("create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema auth to authenticated;");
+    for (const name of ['202610050001_library.sql','202610050002_catalog.sql','202610050003_yes24.sql','202610090001_reading.sql']) await db.exec(await readFile(new URL('../supabase/migrations/'+name, import.meta.url), 'utf8'));
+    const alice='11111111-1111-4111-8111-111111111111', bob='22222222-2222-4222-8222-222222222222';
+    const book='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', movie='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', id='cccccccc-cccc-4ccc-8ccc-cccccccccccc', again='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    await db.query('insert into auth.users values($1),($2)', [alice,bob]);
+    const asUser = async user => { await db.exec('reset role; set role authenticated;'); await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]); };
+    await asUser(alice);
+    await db.query("insert into works(id,user_id,title,kind) values($1,$2,'독서 책','book'),($3,$2,'영화','movie')",[book,alice,movie]);
+    await assert.rejects(db.query('select * from start_reading($1,$2)',[id,movie]));
+    const first=(await db.query('select * from start_reading($1,$2)',[id,book])).rows[0];
+    assert.equal(first.work_id,book); assert.equal(first.status,'active');
+    assert.equal((await db.query('select * from start_reading($1,$2)',[again,book])).rows[0].id,id);
+    await db.query("update reading_sessions set running_since=now()-interval '60 seconds' where id=$1",[id]);
+    const paused=(await db.query("select * from change_reading($1,'pause')",[id])).rows[0];
+    assert.ok(paused.elapsed_seconds>=60); assert.equal(paused.running_since,null);
+    assert.equal((await db.query("select * from change_reading($1,'pause')",[id])).rows[0].elapsed_seconds,paused.elapsed_seconds);
+    const resumed=(await db.query("select * from change_reading($1,'resume')",[id])).rows[0];
+    assert.ok(resumed.running_since); assert.equal(resumed.elapsed_seconds,paused.elapsed_seconds);
+    await asUser(bob);
+    for (const table of ['reading_sessions','reading_preferences']) assert.equal((await db.query('select * from '+table)).rows.length,0);
+    await assert.rejects(db.query("select * from change_reading($1,'complete')",[id]));
+    await assert.rejects(db.query('select * from start_reading($1,$2)',[again,book]));
+    await assert.rejects(db.query('insert into reading_preferences(user_id,work_id) values($1,$2)',[bob,book]));
+    assert.equal((await db.query('delete from reading_sessions where id=$1 returning id',[id])).rows.length,0);
+    await asUser(alice);
+    await assert.rejects(db.query("select * from change_reading($1,'complete',42,$2,$3)",[id,' ','기록 실패']));
+    assert.equal((await db.query('select status from reading_sessions where id=$1',[id])).rows[0].status,'active');
+    assert.equal((await db.query('select progress from works where id=$1',[book])).rows[0].progress,null);
+    const completed=(await db.query("select * from change_reading($1,'complete',42,$2,$3)",[id,'기억할 문장','생각'])).rows[0];
+    assert.equal(completed.status,'completed'); assert.equal(completed.running_since,null); assert.equal(completed.end_page,42); assert.ok(completed.note_id);
+    assert.equal((await db.query("select * from change_reading($1,'complete',99,$2)",[id,'중복'])).rows[0].note_id,completed.note_id);
+    assert.equal((await db.query('select * from notes')).rows.length,1);
+    assert.equal((await db.query('select progress from works where id=$1',[book])).rows[0].progress,42);
+    const revised=(await db.query("select * from change_reading($1,'details',43,$2,$3)",[id,'다듬은 문장','생각'])).rows[0];
+    assert.equal(revised.note_id,completed.note_id); assert.equal((await db.query('select * from notes')).rows.length,1);
+    assert.equal((await db.query('select progress from works where id=$1',[book])).rows[0].progress,43);
+    await db.query('select * from start_reading($1,$2)',[again,book]);
+    await db.query("select * from change_reading($1,'cancel')",[again]);
+    assert.equal((await db.query('select * from reading_sessions')).rows.length,1);
+    await db.query('delete from works where id=$1',[book]);
+    const archived=(await db.query('select * from reading_sessions')).rows[0];
+    assert.equal(archived.user_id,alice); assert.equal(archived.work_id,null); assert.equal(archived.note_id,null); assert.equal(archived.work_title,'독서 책');
+    assert.equal((await db.query('select work_id from reading_preferences')).rows[0].work_id,null);
+    await asUser(bob); assert.equal((await db.query('select * from reading_sessions')).rows.length,0);
+    await db.exec('reset role; set role anon;');
+    await assert.rejects(db.query('select * from reading_sessions'));
+    await assert.rejects(db.query('select * from reading_preferences'));
+    await assert.rejects(db.query("select * from change_reading($1,'complete')",[id]));
+  } finally { await db.close(); }
+});

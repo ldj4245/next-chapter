@@ -1,0 +1,96 @@
+/* The new flow uses the existing document's type, spacing and quiet controls. */
+.day-evidence { border-bottom:1px solid var(--document-line); padding:4px 0; margin:0 0 16px; min-width:0; }
+.day-evidence>summary { display:flex; flex-wrap:wrap; align-items:center; gap:4px 16px; min-height:44px; color:var(--document-muted); font-size:13px; cursor:pointer; }
+.day-evidence>summary:before { content:'›'; font-size:17px; color:var(--subtle); }
+.day-evidence[open]>summary:before { transform:rotate(90deg); }
+.day-evidence>summary>span { margin-left:auto; font-size:13px; color:var(--muted); }
+.next-task-inline label { color:var(--document-muted); font-size:13px; font-weight:400; min-width:0; }
+.focus-mode { display:flex; justify-content:flex-end; margin-top:0; margin-bottom:3px; }
+.focus-mode label { display:flex; align-items:center; flex-direction:row; gap:8px; color:var(--document-muted); font-size:13px; font-weight:400; }
+.focus-mode select { width:auto; max-width:100%; font-size:16px; min-height:44px; border-color:transparent; background:transparent; padding:7px; }
+.task-line .task-start { color:var(--accent); flex-shrink:0; }
+.task-line .task-start:hover:not(:disabled) { color:var(--accent-hover); background:var(--accent-soft); }
+.task-line .task-start:disabled { opacity:.3; }
+.focus-document { margin:16px 0 24px; padding:16px; border:1px solid var(--line); border-radius:var(--control-radius); background:var(--paper); min-width:0; scroll-margin-top:80px; }
+.task-line>.focus-document { margin:8px 8px 16px 44px; padding:12px 16px; border:0; border-left:2px solid var(--accent); border-radius:0 var(--control-radius) var(--control-radius) 0; background:var(--surface-muted); }
+.focus-topline { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:4px; }
+.focus-topline>span { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--accent-hover); padding-top:8px; }
+.focus-clock { display:flex; flex-direction:column; align-items:flex-end; }
+.focus-clock strong { font-size:30px; font-weight:550; line-height:1.35; letter-spacing:.015em; font-variant-numeric:tabular-nums; color:var(--ink); }
+.focus-clock strong span { color:var(--subtle); margin-inline:2px; }
+.focus-clock small { color:var(--muted); font-size:12px; }
+.focus-document h3 { color:var(--document-ink); font-size:18px; font-weight:550; line-height:1.65; overflow-wrap:anywhere; }
+.task-line>.focus-document h3 { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.focus-work-link { display:inline-flex; align-items:center; min-height:44px; font-size:12px; color:var(--document-muted); }
+.focus-actions { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-block:12px; }
+.focus-actions .focus-complete { margin-left:auto; }
+.focus-actions .focus-pause { padding-inline:8px; }
+.focus-completion .focus-actions { margin-bottom:0; }
+.focus-completion>p { color:var(--document-muted); font-size:13px; line-height:1.8; overflow-wrap:anywhere; }
+.focus-actions>.planner-icon { color:var(--muted); }
+.focus-memo .document-textarea { width:100%; min-height:84px; font-size:16px; border:1px solid var(--line); border-radius:var(--control-radius); padding:10px 12px; background:var(--surface); line-height:1.8; }
+.focus-memo .document-textarea:focus { border-color:var(--accent); outline:0; box-shadow:0 0 0 2px var(--accent-soft); }
+.focus-memo .document-textarea::placeholder { color:var(--muted); }
+.focus-refresh { display:inline-flex; align-items:center; gap:6px; min-height:44px; color:var(--muted); font-size:12px; padding-left:0; }
+.focus-cancel { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; font-size:13px; color:var(--danger); padding:10px 0; }
+.focus-cancel p { flex:1 1 220px; }
+.flow-error { margin:10px 0; }
+.flow-error .text-button { display:inline-flex; align-items:center; gap:7px; }
+.day-evidence { margin:24px 0 0; }
+.evidence-lines { padding:10px 0 15px; }
+.evidence-lines article { padding:12px 0; border-bottom:1px solid var(--line); font-size:14px; }
+.evidence-lines article:last-child { border-bottom:0; }
+.evidence-lines article>div { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.evidence-lines strong { font-size:14px; font-weight:550; overflow-wrap:anywhere; }
+.evidence-lines time { white-space:nowrap; font-size:13px; color:var(--document-muted); }
+.evidence-lines p { color:var(--muted); line-height:1.9; font-size:14px; margin-top:6px; }
+.evidence-lines .text-button { font-size:12px; }
+.evidence-pages { margin-top:8px; }
+.evidence-pages summary { font-size:13px; color:var(--muted); cursor:pointer; min-height:44px; padding-top:10px; }
+.evidence-pages label { display:flex; flex-direction:row; align-items:center; gap:10px; font-weight:400; color:var(--muted); font-size:13px; }
+.evidence-pages input { width:110px; min-height:44px; font-size:16px; }
+.next-task-inline { padding:16px 0; border-block:1px solid var(--document-line); margin-top:20px; }
+.next-task-inline form { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px 12px; }
+.next-task-inline form>label:first-child { flex:1 1 100%; }
+.next-task-inline input { font-size:16px; min-height:44px; background:var(--surface); border:1px solid var(--line-strong); border-radius:var(--control-radius); }
+.next-task-inline input[type=date] { width:167px; }
+.next-task-inline .field-hint,.next-task-inline .error { width:100%; }
+.next-task-inline>p { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; font-size:13px; }
+.next-task-inline .text-button { display:inline-flex; gap:5px; align-items:center; }
+.weekly-document { margin-top:32px; border-top:1px solid var(--document-line); padding-top:6px; }
+.weekly-toggle { display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; min-height:52px; border:0; padding:8px 0; background:transparent; color:var(--document-muted); font-size:14px; text-align:left; }
+.weekly-toggle:hover { color:var(--document-ink); }
+.weekly-toggle .rotated { transform:rotate(180deg); }
+.weekly-content { margin:8px 0 20px; min-width:0; }
+.weekly-caption { display:flex; align-items:center; justify-content:space-between; gap:14px; color:var(--document-muted); font-size:12px; }
+.weekly-overview { color:#5a5f53; font-size:14px; line-height:1.8; margin:8px 0 15px; }
+.week-execution-lines>details { border-bottom:1px solid var(--document-line); }
+.week-execution-lines summary { display:grid; grid-template-columns:minmax(0,1fr) 76px 90px; align-items:center; gap:8px; min-height:48px; padding:8px 0; font-size:13px; cursor:pointer; }
+.week-execution-lines summary>span { color:var(--document-muted); font-size:12px; text-align:right; }
+.week-day-detail { padding:10px 0 18px; }
+.week-day-detail>ul { list-style:none; margin:0; padding:0; }
+.week-day-detail>ul>li { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:7px 0; color:#606056; font-size:14px; }
+.week-day-detail>ul>li>span { overflow-wrap:anywhere; }
+.week-day-detail small { color:var(--document-muted); white-space:nowrap; font-size:12px; }
+.week-day-detail>p { line-height:1.9; margin:12px 0; font-size:14px; color:#707065; }
+.week-day-detail .text-button { display:inline-flex; align-items:center; gap:7px; font-size:12px; }
+.week-day-detail .reflection-content h4 { font-size:21px; margin:14px 0 5px; }
+.week-day-detail .reflection-content h5 { font-size:17px; margin:12px 0 5px; }
+.week-day-detail .reflection-content ul { list-style:disc; padding-left:24px; }
+.week-day-detail .reflection-content ol { list-style:decimal; padding-left:24px; }
+.weekly-reasons { color:var(--document-muted); font-size:12px; line-height:1.9; margin-top:16px; }
+.weekly-content>.document-reflection { margin-top:24px; border-top:0; padding-top:8px; }
+@media(max-width:640px) {
+  .focus-clock strong { font-size:28px; }
+  .focus-document { padding:12px; }
+  .task-line>.focus-document { margin-left:0; margin-right:0; padding:12px; }
+  .focus-actions { gap:6px; }
+  .focus-actions .document-button { padding-inline:9px; font-size:13px; }
+  .focus-actions .focus-complete { margin-left:0; }
+  .focus-actions>.planner-icon { margin-left:0; }
+  .focus-mode { justify-content:flex-start; }
+  .day-evidence>summary>span { margin-left:0; }
+  .week-execution-lines summary { grid-template-columns:minmax(0,1fr) 62px 68px; gap:5px; font-size:12px; }
+  .week-execution-lines summary>span { font-size:11px; }
+  .weekly-overview { font-size:13px; }
+}

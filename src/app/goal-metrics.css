@@ -1,0 +1,19 @@
+/* Measurement stays part of the document, beside the goal's existing properties. */
+.goal-metric-options { margin:4px 0 9px; }
+.goal-metric-options>summary { width:fit-content; min-height:44px; padding:11px 0; color:var(--document-muted); font-size:13px; cursor:pointer; }
+.goal-metric-options>summary:hover { color:var(--document-ink); }
+.goal-metric-fields { margin:3px 0 5px; }
+.goal-metric-target-input { display:flex; align-items:center; min-width:0; max-width:180px; }
+.goal-metric-target-input input { width:130px; min-width:0; }
+.goal-metric-target-input>span { padding:0 6px; font-size:13px; }
+.goal-measurement { margin:14px 0 4px; max-width:420px; }
+.goal-measurement>p { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 15px; font-size:13px; color:var(--document-muted); margin-bottom:8px; }
+.goal-measurement-amount { color:var(--document-ink); font-variant-numeric:tabular-nums; }
+.goal-measurement-amount>span { color:var(--document-muted); }
+.goal-measurement-track { width:100%; height:3px; overflow:hidden; background:var(--line); border-radius:2px; }
+.goal-measurement-track>span { display:block; height:100%; background:var(--accent); border-radius:2px; }
+.goal-measurement>small { display:block; margin-top:7px; color:var(--document-muted); font-size:12px; }
+@media(max-width:640px) {
+  .goal-metric-target-input { max-width:100%; }
+  .goal-metric-target-input input { flex:1; width:100%; }
+}

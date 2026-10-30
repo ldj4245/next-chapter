@@ -1,0 +1,40 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+test('실제 PostgreSQL RLS: 비로그인과 다른 소유자의 CRUD 및 기록 연결 차단', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec("create role anon; create role authenticated; create schema auth; create table auth.users (id uuid primary key); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$; grant usage on schema auth to authenticated;");
+    await db.exec(await readFile(new URL('../supabase/migrations/202610050001_library.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/202610050002_catalog.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/202610050003_yes24.sql', import.meta.url), 'utf8'));
+    const alice = '11111111-1111-4111-8111-111111111111', bob = '22222222-2222-4222-8222-222222222222', work = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', note = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    await db.query('insert into auth.users values ($1),($2)', [alice,bob]);
+    const asUser = async id => { await db.exec('reset role; set role authenticated;'); await db.query("select set_config('request.jwt.claim.sub', $1, false)", [id]); };
+    await asUser(alice);
+    await db.query("insert into works(id,user_id,title,kind,source,source_id) values ($1,$2,'나의 책','book','yes24','99308021')", [work,alice]);
+    await assert.rejects(db.query("update works set source='unknown' where id=$1", [work]));
+    await db.query("insert into notes(id,user_id,work_id,content) values ($1,$2,$3,'첫 문장')", [note,alice,work]);
+    await db.query("insert into notes(user_id,work_id,content) values ($1,$2,'두 번째')", [alice,work]);
+    assert.equal((await db.query('select * from notes')).rows.length, 2);
+    await assert.rejects(db.query("insert into works(user_id,title,kind) values ($1,'위장','book')", [bob]));
+    await assert.rejects(db.query('update works set user_id=$1 where id=$2', [bob,work]));
+    await asUser(bob);
+    assert.equal((await db.query('select * from works')).rows.length, 0);
+    assert.equal((await db.query('select * from notes')).rows.length, 0);
+    for (const sql of ["update works set title='변경' where id=$1 returning id", 'delete from works where id=$1 returning id', "update notes set content='변경' where work_id=$1 returning id", 'delete from notes where work_id=$1 returning id']) assert.equal((await db.query(sql, [work])).rows.length, 0);
+    await assert.rejects(db.query("insert into notes(user_id,work_id,content) values ($1,$2,'남의 책에 메모')", [bob,work]));
+    await assert.rejects(db.query("insert into notes(user_id,work_id,content) values ($1,$2,'위장 메모')", [alice,work]));
+    await db.exec('reset role; set role anon;');
+    await assert.rejects(db.query('select * from works')); await assert.rejects(db.query('select * from notes'));
+    await asUser(alice);
+    await assert.rejects(db.query("update works set rating=6 where id=$1", [work]));
+    await assert.rejects(db.query("update works set progress=-1 where id=$1", [work]));
+    await assert.rejects(db.query("update works set started_on='2026-10-05',finished_on='2026-10-04' where id=$1", [work]));
+    await db.query("update works set status='completed' where id=$1", [work]);
+    assert.equal((await db.query('select * from notes')).rows.length, 2);
+    await db.query('delete from works where id=$1', [work]);
+    assert.equal((await db.query('select * from notes')).rows.length, 0);
+  } finally { await db.close(); }
+});
