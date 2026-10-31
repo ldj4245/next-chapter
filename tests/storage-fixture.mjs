@@ -1,6 +1,7 @@
 // Metadata used by Storage migrations; binary transfer is covered by real HTTP.
 export async function prepareStorage(db) {
   await db.exec(`
+    do $$begin if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role bypassrls; end if; end$$;
     create schema storage;
     create table storage.buckets(id text primary key,name text not null,public boolean not null default false,file_size_limit bigint,allowed_mime_types text[]);
     create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text not null,owner_id text,metadata jsonb,unique(bucket_id,name));

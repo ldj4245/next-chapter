@@ -12,6 +12,7 @@ import { request, RequestError, useAction } from './api-client';
 import { prepareDocumentNavigation, useUnsavedGuard } from './editor';
 import { PartnerControls, usePartner, usePartnerResource } from './partner';
 import { ErrorMessage } from './ui';
+import { RecordArchives } from './record-archives';
 
 type Operation = 'profile' | 'password' | 'logout' | 'export' | 'delete';
 
@@ -28,13 +29,13 @@ export function AccountHome() {
 function AccountContent({ data, refresh, unavailable }: { data: AccountData; refresh: () => void; unavailable: boolean }) {
   const router = useRouter(), id = useId(), action = useAction(), partner = usePartner();
   const operationLock = useRef(false), profileRef = useRef<HTMLInputElement>(null), passwordRef = useRef<HTMLFormElement>(null), deleteRef = useRef<HTMLFormElement>(null);
-  const [operation, setOperation] = useState<Operation | null>(null), [issues, setIssues] = useState<Issues>({});
+  const [operation, setOperation] = useState<Operation | null>(null), [issues, setIssues] = useState<Issues>({}), [archiveBusy, setArchiveBusy] = useState(false);
   const [nickname, setNickname] = useState(data.nickname), [savedNickname, setSavedNickname] = useState(data.nickname), [profileSaved, setProfileSaved] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false), [passwordSaved, setPasswordSaved] = useState(false);
   const [currentPassword, setCurrentPassword] = useState(''), [password, setPassword] = useState(''), [passwordConfirm, setPasswordConfirm] = useState('');
   const [exported, setExported] = useState(false), [deleteOpen, setDeleteOpen] = useState(data.deletion_pending), [deletePassword, setDeletePassword] = useState(''), [confirmation, setConfirmation] = useState(''), [deleted, setDeleted] = useState(false);
   const nicknameDirty = nickname !== savedNickname, passwordDirty = Boolean(currentPassword || password || passwordConfirm), deletionDirty = Boolean(deletePassword || confirmation);
-  const blocked = unavailable || data.deletion_pending, busy = action.busy, fieldsDisabled = blocked || busy;
+  const blocked = unavailable || data.deletion_pending, busy = action.busy || archiveBusy, fieldsDisabled = blocked || busy;
   useUnsavedGuard(!deleted && (nicknameDirty || passwordDirty || deletionDirty || busy));
 
   function accountChanged() { refresh(); partner.refresh(); }
@@ -137,11 +138,12 @@ function AccountContent({ data, refresh, unavailable }: { data: AccountData; ref
       <div className="account-section-body">
         <div className="account-setting-row"><div><h3>기록 내보내기</h3><p>서재·계획·회고와 사진 목록을 JSON으로 보관해요. 사진 파일 자체는 포함되지 않아요.</p></div><button className="document-button secondary" type="button" disabled={busy || unavailable} onClick={() => void perform('export', exportData)}><Download size={15} aria-hidden="true"/>{busy && operation === 'export' ? '준비 중…' : '내보내기'}</button></div>
         {exported && <p className="account-saved" role="status"><Check size={15} aria-hidden="true"/>백업 파일을 준비했어요.</p>}{operationError('export')}
+        <RecordArchives disabled={blocked || action.busy} onBusy={setArchiveBusy}/>
         <div className="account-delete-area">
           <button className="account-disclosure account-delete-toggle" type="button" disabled={busy} aria-expanded={deleteOpen || data.deletion_pending} aria-controls={id + '-delete-form'} onClick={() => setDeleteOpen(value => !value)}><span>회원 탈퇴</span><ChevronDown size={17} aria-hidden="true" className={deleteOpen || data.deletion_pending ? 'is-open' : undefined}/></button>
           <form ref={deleteRef} id={id + '-delete-form'} className="account-delete-form" noValidate hidden={!deleteOpen && !data.deletion_pending} onSubmit={event => { event.preventDefault(); void perform('delete', deleteAccount); }}>
             <p className="account-delete-description">내 서재·메모·계획·회고·사진과 계정이 영구 삭제돼요. 상대와의 연결도 해제되며, 상대가 작성한 기록은 남아요. 삭제한 내 기록은 복구할 수 없어요.</p>
-            <p className="field-hint">필요한 기록을 먼저 내보낸 뒤 진행해주세요.</p>
+            <p className="field-hint">필요한 기록을 먼저 내보낸 뒤 진행해주세요. 직접 Arweave에 올린 암호화 보관본과 기기에 받은 복구 파일은 탈퇴해도 남아요.</p>
             <PasswordInput id={id + '-delete-password'} name="current_password" label="현재 비밀번호" value={deletePassword} onChange={setDeletePassword} disabled={busy || unavailable} errorId={fieldErrorId('current_password', 'delete')}/>{fieldIssue('current_password', 'delete')}
             <label className="account-confirm-label" htmlFor={id + '-delete-confirm'}>확인을 위해 ‘탈퇴’를 입력해주세요.</label><input id={id + '-delete-confirm'} name="confirmation" value={confirmation} autoComplete="off" maxLength={10} disabled={busy || unavailable} onChange={event => setConfirmation(event.target.value)} aria-invalid={Boolean(fieldErrorId('confirmation', 'delete'))} aria-describedby={fieldErrorId('confirmation', 'delete')}/>{fieldIssue('confirmation', 'delete')}
             {operationError('delete')}

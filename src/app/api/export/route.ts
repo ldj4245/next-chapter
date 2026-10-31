@@ -7,10 +7,11 @@ import { goalColumns,taskColumns,reviewColumns } from '@/lib/planner';
 import { partnerState } from '@/lib/partner-server';
 import {photoColumns,publicPhoto,type PhotoRow} from '@/lib/photo-server';
 import {resourceColumns,bookmarkColumns} from '@/lib/resources';
+import { ARCHIVE_COLUMNS } from '@/lib/archive';
 export async function GET() {
   try {
     const { user, client } = await requireSession();
-    const [works, notes, sessions, preferences,goals,tasks,reviews,routines,occurrences,dayPreferences,weekReviews,partner,photos,quickMemos,recordRevisits,learningResources,resourceBookmarks] = await Promise.all([
+    const [works, notes, sessions, preferences,goals,tasks,reviews,routines,occurrences,dayPreferences,weekReviews,partner,photos,quickMemos,recordRevisits,learningResources,resourceBookmarks,recordArchives] = await Promise.all([
       allRows((from, to) => client.from('works').select(workColumns).eq('user_id', user.id).order('created_at').order('id').range(from, to)),
       allRows((from, to) => client.from('notes').select(noteColumns).eq('user_id', user.id).order('created_at').order('id').range(from, to)),
       allRows((from, to) => client.from('reading_sessions').select(focusSessionColumns).eq('user_id', user.id).order('started_at').order('id').range(from, to)),
@@ -28,9 +29,10 @@ export async function GET() {
       allRows((from,to)=>client.from('record_revisits').select('id,source_kind,source_id,source_day,source_work_id,source_date,source_title,source_text,thought,created_at,updated_at').eq('user_id',user.id).order('created_at').order('id').range(from,to)),
       allRows((from,to)=>client.from('learning_resources').select(resourceColumns).eq('user_id',user.id).order('created_at').order('id').range(from,to)),
       allRows((from,to)=>client.from('resource_bookmarks').select(bookmarkColumns).eq('user_id',user.id).order('created_at').order('id').range(from,to)),
+      allRows((from,to)=>client.from('record_archives').select(ARCHIVE_COLUMNS).eq('user_id',user.id).order('created_at').order('id').range(from,to)),
     ]);
     if (preferences.error) throw new Error(preferences.error.code);
-    const payload = { ...backup(works as unknown as Work[], notes as unknown as Note[]), schemaVersion: 3, reading: { sessions, preferences: preferences.data },planner:{goals,tasks,reviews,routines,occurrences,dayPreferences,weekReviews},partner,photos:(photos as PhotoRow[]).map(publicPhoto),quickMemos,recordRevisits,learning:{resources:learningResources,bookmarks:resourceBookmarks} };
+    const payload = { ...backup(works as unknown as Work[], notes as unknown as Note[]), schemaVersion: 3, reading: { sessions, preferences: preferences.data },planner:{goals,tasks,reviews,routines,occurrences,dayPreferences,weekReviews},partner,photos:(photos as PhotoRow[]).map(publicPhoto),quickMemos,recordRevisits,learning:{resources:learningResources,bookmarks:resourceBookmarks},recordArchives };
     const response = json(payload);
     response.headers.set('Content-Disposition', 'attachment; filename="next-chapter-' + payload.exportedAt.slice(0, 10) + '.json"');
     return response;
