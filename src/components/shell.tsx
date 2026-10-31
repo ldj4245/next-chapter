@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { BookOpen, CalendarDays, Flag, Library, Compass, Plus, Search, LockKeyhole, PencilLine, FolderOpen } from 'lucide-react';
+import { BookOpen, CalendarDays, Flag, Library, Compass, Plus, Search, LockKeyhole, PencilLine, FolderOpen, SlidersHorizontal } from 'lucide-react';
 import { BrandMark } from './ui';
 import { QuickCapture } from './memory';
 import { RecordAnchor } from './record-anchor';
@@ -16,7 +16,7 @@ const links = [
   { href: '/reading', label: '독서 타이머', mobile: '독서', Icon: BookOpen, desktopOnly:true },
 ];
 
-export function AppShell({ email, children }: { email: string; children: React.ReactNode }) {
+export function AppShell({ email, children, admin = false }: { email: string; children: React.ReactNode; admin?: boolean }) {
   const pathname = usePathname();
   const [captureOpen,setCaptureOpen]=useState(false);
   const accountActive = pathname === '/account';
@@ -30,7 +30,7 @@ export function AppShell({ email, children }: { email: string; children: React.R
         return <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={[active?'active':'',desktopOnly?'nav-desktop-only':''].filter(Boolean).join(' ')}><Icon size={21} strokeWidth={1.7} aria-hidden="true"/><span className="nav-desktop-label">{label}</span><span className="nav-mobile-label">{mobile}</span></Link>;
       })}</nav>
       <Link className="sidebar-add button secondary" href="/library/new"><Plus size={18} aria-hidden="true"/>작품 추가</Link>
-      <div className="sidebar-bottom"><p className="sidebar-note"><LockKeyhole size={14} aria-hidden="true"/>나의 기록</p><Link className="account" href="/account" aria-current={accountActive ? 'page' : undefined}><span className="avatar">나</span><span><strong>내 계정</strong><span className="account-email">{email}</span></span></Link></div>
+      <div className="sidebar-bottom">{admin && <Link className="sidebar-admin-link" href="/admin"><SlidersHorizontal size={16}/>관리</Link>}<p className="sidebar-note"><LockKeyhole size={14} aria-hidden="true"/>나의 기록</p><Link className="account" href="/account" aria-current={accountActive ? 'page' : undefined}><span className="avatar">나</span><span><strong>내 계정</strong><span className="account-email">{email}</span></span></Link></div>
     </aside>
     <div className="app-main">
       <header className="topbar"><Link href="/" className="mobile-brand"><BrandMark/><span>다음 장</span></Link><p className="breadcrumb">나의 공간<span aria-hidden="true">/</span>{accountActive ? '내 계정' : pathname === '/search'?'기록 검색':pathname==='/notes'?'메모':pathname==='/revisit'?'지난 기록':pathname === '/library/new' ? '작품 추가' : pathname.startsWith('/library/') ? '작품 기록' : current?.label}</p>
@@ -38,7 +38,7 @@ export function AppShell({ email, children }: { email: string; children: React.R
       </header>
       <QuickCapture open={captureOpen} onClose={()=>setCaptureOpen(false)}/>
       <RecordAnchor/>
-      <main id="main" tabIndex={-1} className="main-content">{children}<footer className="page-footer"><span>다음 장</span><span>개인 기록</span></footer></main>
+      <main id="main" tabIndex={-1} className="main-content">{children}<footer className="page-footer"><span>다음 장</span><Link href="/privacy">개인정보처리방침</Link></footer></main>
     </div>
   </div>;
 }
