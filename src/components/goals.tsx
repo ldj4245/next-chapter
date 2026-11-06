@@ -29,7 +29,7 @@ function GoalsBody({ initial }: { initial: GoalsData }) {
       ...previous,
       goals: previous.goals.some(item => item.id === goal.id)
         ? previous.goals.map(item => item.id === goal.id ? goal : item)
-        : [...previous.goals, goal],
+        : [goal, ...previous.goals],
     }));
   }
   return <div className="document-page goals-document planner-goals">
@@ -42,11 +42,13 @@ function GoalsBody({ initial }: { initial: GoalsData }) {
       </div>
     </header>
     {notice && <p className="document-notice" role="status">{notice}<button className="text-button" onClick={() => setNotice('')}>닫기</button></p>}
+    <GoalComposer goals={data.goals} save={goal => {
+      save(goal);
+      setNotice(`${GOAL_PERIODS[goal.period]}를 추가했어요.`);
+    }} />
     <div className="goal-document-list">
       {data.goals.map(goal => <GoalRow key={goal.id} goal={goal} data={data} enabled={removing?.id !== goal.id} save={save} remove={() => setRemoving(goal)} />)}
     </div>
-    {!data.goals.length && <p className="document-empty">첫 목표를 아래에 적어보세요.</p>}
-    <GoalComposer goals={data.goals} save={save} />
     {removing && <ConfirmDialog title="이 목표를 삭제할까요?" description="하루의 할 일과 회고는 남아요. 연결된 할 일과 단기 목표의 연결만 해제돼요." busy={deletion.busy} error={deletion.error} cancel={() => setRemoving(null)} confirm={() => deletion.run(async () => {
       await request('/api/goals/' + removing.id, 'DELETE');
       setData(previous => ({
@@ -63,13 +65,18 @@ function GoalsBody({ initial }: { initial: GoalsData }) {
 function GoalComposer({ goals, save }: { goals: Goal[]; save: (goal: Goal) => void }) {
   const [draft, setDraft] = useState<GoalInput>(blankGoal);
   const id = useRef<string | null>(null);
-  const title = useRef<HTMLInputElement>(null);
   const action = useAction();
   useUnsavedGuard(JSON.stringify(draft) !== JSON.stringify(blankGoal));
   function update<K extends keyof GoalInput>(field: K, value: GoalInput[K]) {
     setDraft(previous => ({ ...previous, [field]: value }));
   }
-  return <form className="goal-composer" onSubmit={event => {
+  return <form className="goal-composer" aria-label="새 목표" onInvalidCapture={event => {
+    // Reveal the control before native validation tries to focus it.
+    if (event.target instanceof HTMLElement) {
+      const options = event.target.closest('details');
+      if (options) options.open = true;
+    }
+  }} onSubmit={event => {
     event.preventDefault();
     void action.run(async () => {
       const input = parseGoal(draft);
@@ -83,19 +90,17 @@ function GoalComposer({ goals, save }: { goals: Goal[]; save: (goal: Goal) => vo
       save(result.goal);
       setDraft(blankGoal);
       id.current = null;
-      requestAnimationFrame(() => title.current?.focus());
     });
   }}>
     <div className="goal-document-heading">
       <Plus size={18} aria-hidden="true" />
-      <input ref={title} className="goal-composer-title" name="title" aria-label="새 목표 제목" maxLength={160} required value={draft.title} disabled={action.busy} onChange={event => update('title', event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault(); }} placeholder="새 목표를 적고 Enter" />
-      <button className="document-button goal-composer-submit" disabled={action.busy || !draft.title.trim()}>{action.busy ? '추가 중' : '추가'}</button>
+      <input className="goal-composer-title" name="title" aria-label="새 목표 제목" maxLength={160} required value={draft.title} disabled={action.busy} onChange={event => update('title', event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault(); }} placeholder="새 목표 제목" />
     </div>
+    <label className="goal-document-property goal-composer-period">기간<select disabled={action.busy} value={draft.period} onChange={event => setDraft(previous => ({ ...previous, period: event.target.value as Goal['period'], parent_id: null }))}>{Object.entries(GOAL_PERIODS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
     <details className="goal-composer-options">
-      <summary>기간 · 날짜 · 측정 기준 · 메모</summary>
+      <summary>날짜 · 측정 기준 · 메모{draft.period === 'short' && goals.some(goal => goal.period === 'long') ? ' · 장기 목표 연결' : ''}</summary>
       <fieldset disabled={action.busy}>
         <div className="goal-document-properties">
-          <label className="goal-document-property">기간<select value={draft.period} onChange={event => setDraft(previous => ({ ...previous, period: event.target.value as Goal['period'], parent_id: null }))}>{Object.entries(GOAL_PERIODS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label className="goal-document-property">목표 날짜<input type="date" min="1900-01-01" max="2100-12-31" value={draft.target_day ?? ''} onChange={event => update('target_day', event.target.value || null)} /></label>
           {draft.period === 'short' && <label className="goal-document-property">장기 목표<select value={draft.parent_id ?? ''} onChange={event => update('parent_id', event.target.value || null)}><option value="">연결 없음</option>{goals.filter(goal => goal.period === 'long').map(goal => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></label>}
         </div>
@@ -104,6 +109,9 @@ function GoalComposer({ goals, save }: { goals: Goal[]; save: (goal: Goal) => vo
       </fieldset>
     </details>
     <ErrorMessage error={action.error} />
+    <div className="goal-composer-actions">
+      <button type="submit" className="document-button goal-composer-submit" disabled={action.busy || !draft.title.trim()}>{action.busy ? '추가 중' : '목표 추가'}</button>
+    </div>
   </form>;
 }
 

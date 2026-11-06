@@ -313,9 +313,11 @@
 .goal-composer-title { flex:1; min-width:0; background:transparent; border:1px solid transparent; border-radius:var(--control-radius); min-height:44px; padding:8px; font-size:16px; }
 .goal-composer-title:hover { background:var(--document-hover); }
 .goal-composer-title:focus { background:var(--paper); border-color:var(--line-strong); }
+.goal-composer-period { display:flex; flex-direction:row; align-items:center; gap:10px; margin:6px 0 0 26px; }
+.goal-document-property.goal-composer-period select { width:min(180px, 100%); }
 .goal-composer-options { margin-top:4px; padding-left:26px; }
 .goal-composer-options>summary { color:var(--document-muted); font-size:13px; min-height:44px; width:fit-content; padding:10px 0; cursor:pointer; }
-.goal-composer-options>label { font-size:13px; color:var(--document-muted); font-weight:400; gap:5px; flex:1 1 125px; min-width:0; }
+.goal-composer-actions { display:flex; justify-content:flex-end; margin-top:8px; }
 .goal-composer-submit { flex-shrink:0; border:1px solid var(--accent); background:var(--accent); color:var(--surface); }
 .goal-composer-submit:hover { background:var(--accent-hover); border-color:var(--accent-hover); }
 .goal-composer-submit:disabled { border-color:var(--document-line); background:var(--surface); color:var(--subtle); }
@@ -362,6 +364,8 @@
   .goal-document-properties { gap:6px 8px; }
   .goal-document-property { flex:1 1 125px; }
   .goal-document-property input,.goal-document-property select { width:100%; max-width:100%; }
+  .goal-composer-period { margin-left:0; }
+  .goal-composer-options { padding-left:0; }
   .goal-document-footer>.text-button,.goal-document-footer>.document-link { margin-left:0; }
   .goal-history li>a { grid-template-columns:minmax(0,1fr) auto; gap:3px 10px; }
   .goal-history time { grid-column:1 / -1; }
@@ -380,6 +384,5 @@
   .document-section-heading>.save-status { margin-left:0; }
   .task-properties { padding-left:8px; margin-left:0; }
   .task-properties>label { flex-basis:100%; }
-  .goal-composer-options>label { flex-basis:100%; }
   .goal-document-property { flex-basis:100%; }
 }
