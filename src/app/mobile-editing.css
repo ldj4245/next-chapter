@@ -1,0 +1,78 @@
+html[data-mobile-keyboard] {
+  --mobile-writing-max-height: max(44px, calc(var(--mobile-editing-height, 100dvh) * .65));
+  scroll-padding-block-start: calc(var(--mobile-editing-top, 0px) + 12px);
+  scroll-padding-block-end: max(16px, calc(var(--mobile-keyboard-inset, 0px) - var(--mobile-editing-top, 0px) + 16px));
+}
+
+html[data-mobile-keyboard] body {
+  padding-bottom: calc(var(--mobile-keyboard-inset, 0px) + 16px);
+}
+
+html[data-mobile-keyboard] :is(input, select, textarea, [contenteditable]) {
+  scroll-margin-block: 12px;
+}
+
+html[data-mobile-keyboard] :is(textarea:focus, .document-textarea:focus) {
+  min-height: 44px;
+  max-height: var(--mobile-writing-max-height);
+  overflow-y: auto;
+}
+
+html[data-mobile-keyboard] .reflection-canvas[data-empty=true] .reflection-text:focus {
+  min-height: min(120px, var(--mobile-writing-max-height));
+}
+
+html[data-mobile-keyboard] .routine-settings[open] {
+  --dialog-top-gap: max(8px, env(safe-area-inset-top));
+  position: fixed;
+  inset: calc(var(--mobile-editing-top, 0px) + var(--dialog-top-gap)) 0 auto;
+  margin: 0 auto;
+  max-height: calc(var(--mobile-editing-height, 100dvh) - var(--dialog-top-gap) - 8px);
+  overflow-y: auto;
+  scroll-padding-block: 12px;
+}
+
+@media (max-width: 850px) {
+  html[data-mobile-keyboard] .sidebar {
+    display: none;
+  }
+
+  html[data-mobile-keyboard] .main-content {
+    padding-bottom: 28px;
+  }
+}
+
+@media (max-width: 850px), (any-pointer: coarse) {
+  .reflection-row:has(> .reflection-menu) {
+    display: grid;
+    grid-template-columns: 44px 0 minmax(0, 1fr);
+  }
+
+  .reflection-row:has(> .reflection-menu):has(> :is(.reflection-marker, .reflection-check-control)) {
+    grid-template-columns: 44px 44px minmax(0, 1fr);
+  }
+
+  .reflection-row:has(> .reflection-menu) > .reflection-menu-toggle {
+    grid-area: 1 / 1;
+  }
+
+  .reflection-row:has(> .reflection-menu) > :is(.reflection-marker, .reflection-check-control) {
+    grid-area: 1 / 2;
+  }
+
+  .reflection-row:has(> .reflection-menu) > .reflection-text {
+    grid-area: 1 / 3;
+  }
+
+  .reflection-row > .reflection-menu {
+    position: static;
+    grid-area: 2 / 2 / 3 / -1;
+    margin-block: 6px;
+    max-width: 100%;
+    max-height: min(240px, max(60px, calc(var(--mobile-editing-height, 100dvh) * .4)));
+  }
+
+  html[data-mobile-keyboard] .reflection-row:has(> .reflection-menu) {
+    --mobile-writing-max-height: max(44px, calc(var(--mobile-editing-height) * .4));
+  }
+}

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { MobileEditingViewport } from '@/components/mobile-editing-viewport';
 import './globals.css';
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#f7f7f4' };
 export const metadata: Metadata = {
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="ko"><body>{children}</body></html>;
+  return <html lang="ko"><body>{children}<MobileEditingViewport/></body></html>;
 }

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useRef, useState, type TextareaHTMLAttributes } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type TextareaHTMLAttributes } from 'react';
 import { useRouter } from 'next/navigation';
 import { DocumentSaver, type SaveReport, type SaveState } from '@/lib/document-save';
 import { ErrorMessage } from './ui';
@@ -62,16 +62,36 @@ export function useUnsavedGuard(dirty: boolean, saveNow?: () => Promise<boolean>
 }
 let guards = 0, globalWarn: ((event: BeforeUnloadEvent) => void) | undefined, globalGuard: ((event: MouseEvent) => void) | undefined;
 
+function resizeDocumentTextarea(element: HTMLTextAreaElement | null) {
+  if (!element?.offsetWidth) return;
+  const border = element.offsetHeight - element.clientHeight;
+  const contentHeight = element.scrollHeight;
+  if (contentHeight > element.clientHeight) {
+    // Grow directly when the text already overflows. Collapsing the box first
+    // would move the scroll position of a long draft on every keystroke.
+    element.style.height = `${contentHeight + border}px`;
+    return;
+  }
+  element.style.height = 'auto';
+  element.style.height = `${element.scrollHeight + border}px`;
+}
+
 export function DocumentTextarea({ inputRef, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & { inputRef?: (element: HTMLTextAreaElement | null) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  const resize = () => { const element = ref.current; if (element) { element.style.height = 'auto'; element.style.height = element.scrollHeight + 'px'; } };
-  useEffect(resize, [props.value]);
+  useLayoutEffect(() => resizeDocumentTextarea(ref.current), [props.value]);
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
-    let width = element.clientWidth;
-    const observer = new ResizeObserver(() => { if (element.clientWidth !== width) { width = element.clientWidth; element.style.height = 'auto'; element.style.height = element.scrollHeight + 'px'; } });
+    let width = element.offsetWidth;
+    const observer = new ResizeObserver(() => {
+      if (element.offsetWidth === width) return;
+      width = element.offsetWidth;
+      resizeDocumentTextarea(element);
+    });
     observer.observe(element); return () => observer.disconnect();
   }, []);
-  return <textarea {...props} ref={element => { ref.current = element; inputRef?.(element); }} rows={props.rows ?? 1} className={'document-textarea ' + (props.className ?? '')} onInput={event => { resize(); props.onInput?.(event); }}/>;
+  return <textarea {...props} ref={element => { ref.current = element; inputRef?.(element); }} rows={props.rows ?? 1} className={'document-textarea ' + (props.className ?? '')} onInput={event => {
+    if (props.value === undefined) resizeDocumentTextarea(event.currentTarget);
+    props.onInput?.(event);
+  }}/>;
 }

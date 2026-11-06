@@ -163,7 +163,7 @@ export function Reflection({ day, review, save, endpoint='/api/planner/review', 
             event.preventDefault();
             edit(pasteBlocks(draft.current, block.id, event.currentTarget.selectionStart, event.currentTarget.selectionEnd, text)); setMenu(null);
           }}/>
-          {open && <div className="reflection-menu" ref={popup} id={menuId} onKeyDown={event => {
+          {open && <div className="reflection-menu" data-editing-companion ref={popup} id={menuId} onKeyDown={event => {
             if (event.key === 'Escape') { event.preventDefault(); setMenu(null); focus({ id: block.id, cursor: block.text.length }); }
             if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
               event.preventDefault(); const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')], current = buttons.indexOf(event.target as HTMLButtonElement);
