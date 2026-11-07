@@ -33,10 +33,6 @@ html[data-mobile-keyboard] .routine-settings[open] {
 }
 
 @media (max-width: 850px) {
-  html[data-mobile-keyboard] .app-header {
-    position: static;
-  }
-
   html[data-mobile-keyboard] .sidebar {
     display: none;
   }

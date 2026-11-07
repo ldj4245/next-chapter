@@ -1,11 +1,11 @@
 @theme { --font-sans:Pretendard,"Noto Sans KR","Malgun Gothic",system-ui,sans-serif; }
 :root {
-  --paper:#fff; --surface:#fff; --surface-muted:#f7f9fc;
-  --ink:#252c38; --muted:#667085; --subtle:#6b778c;
-  --line:#e3e8ef; --line-strong:#c5cfdf; --line-soft:#eff1f5;
-  --accent:#3565d8; --accent-hover:#2852b5; --accent-soft:#eef3fd; --dark:#253650;
+  --paper:#f7f7f4; --surface:#fff; --surface-muted:#f3f4ef;
+  --ink:#30332e; --muted:#686e63; --subtle:#6b7166;
+  --line:#e4e6de; --line-strong:#c6cbbd;
+  --accent:#526347; --accent-hover:#405037; --accent-soft:#eef1e9; --dark:#30332e;
   --danger:#984e43; --danger-soft:#fbf2ef;
-  --editorial:var(--font-sans); --radius:8px; --control-radius:6px;
+  --editorial:Georgia,"Batang","바탕",serif; --radius:10px; --control-radius:6px;
 }
 * { box-sizing:border-box; }
 html { scroll-padding-bottom:100px; }

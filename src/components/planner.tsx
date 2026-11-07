@@ -8,7 +8,7 @@ import { request, useAction } from './api-client';
 import { ConfirmDialog, ErrorMessage, Loading, ResourceError } from './ui';
 import { prepareDocumentNavigation, DocumentTextarea, SaveStatus, useDocumentSave, useUnsavedGuard } from './editor';
 import { Reflection } from './reflection';
-import { DayEvidence, FocusClock, FocusPanel, useFocus, type FocusController } from './focus';
+import { DayEvidence, FocusPanel, useFocus, type FocusController } from './focus';
 import { NextTask, type NextTaskSource } from './day-flow';
 import { BatchPlanning } from './batch-planning';
 import { Routines } from './routines';
@@ -19,7 +19,7 @@ import { TaskSharingEditor } from './task-sharing';
 import {TaskPhotos} from './task-photos';
 import type { PartnerConnection } from '@/lib/partner';
 
-type TaskEditor={complete:()=>Promise<boolean>;collapse:()=>void;start:()=>Promise<void>};
+type TaskEditor={complete:()=>Promise<boolean>;collapse:()=>void};
 
 export function DailyPlanner({ day, goalId, initialView='mine' }: { day: string; goalId?: string;initialView?:'mine'|'peer' }) {
   const [resource,setResource]=useState<{data:PlanData|null;error:string;loading:boolean}>({data:null,error:'',loading:true}),[revision,setRevision]=useState(0);
@@ -41,7 +41,6 @@ function PlannerDay({ initial, goalId,initialView='mine' }: { initial: PlanData;
   const [nextTask,setNextTask]=useState<NextTaskSource|null>(null),[flowNotice,setFlowNotice]=useState('');
   const [view,setView]=useState<'mine'|'peer'>(initialView);
   const [showCompleted,setShowCompleted]=useState(false);
-  const [focusTaskId,setFocusTaskId]=useState('');
   const taskEditors=useRef(new Map<string,TaskEditor>());
   const registerCompletion=useCallback((id:string,editor:TaskEditor)=>{
     taskEditors.current.set(id,editor);
@@ -55,8 +54,6 @@ function PlannerDay({ initial, goalId,initialView='mine' }: { initial: PlanData;
   const activeId=focus.data?.session?.task_id;
   const activeTasks=data.tasks.filter(task=>task.status!=='completed'||task.id===activeId);
   const completedTasks=data.tasks.filter(task=>task.status==='completed'&&task.id!==activeId);
-  const focusChoices=data.tasks.filter(task=>task.status!=='completed');
-  const selectedFocusTask=focusChoices.some(task=>task.id===focusTaskId)?focusTaskId:focusChoices[0]?.id??'';
   async function toggleCompleted(){
     if(showCompleted){
       if(!await prepareDocumentNavigation({preserveDrafts:true}))return;
@@ -83,11 +80,10 @@ function PlannerDay({ initial, goalId,initialView='mine' }: { initial: PlanData;
   async function applied(){const latest=await request<PlanData>('/api/planner?day='+data.day);setData(previous=>({...previous,tasks:[...previous.tasks,...latest.tasks.filter(task=>!previous.tasks.some(item=>item.id===task.id))],weekTasks:latest.weekTasks}));}
   async function switchView(next:'mine'|'peer') {if(next===view)return true;if(!await prepareDocumentNavigation({preserveDrafts:true}))return false;setView(next);router.replace('/?day='+data.day+(next==='peer'?'&view=peer':'')+(goalId?'&goal='+encodeURIComponent(goalId):''),{scroll:false});return true;}
   return <div className="document-page daily-document">
-    <div className="daily-page-heading"><h1>오늘의 계획</h1><Link className="text-button" href="/reading">독서 타이머 <ArrowRight size={14}/></Link></div>
-    <div className="daily-workspace"><div className="daily-writing">
+    <div className="document-topline"><span>하루 계획</span><Link className="text-button" href="/reading">독서 타이머 <ArrowRight size={14}/></Link></div>
     <header className="document-header daily-header-layout">
       <div>
-      <h2 className="document-title">{dayLabel(data.day)}</h2>
+      <h1 className="document-title">{dayLabel(data.day, false)}</h1>
       <div className="document-toolbar"><span>{data.day.slice(0, 4)}년 · {dayLabel(data.day).split(' ').at(-1)}{data.day === data.today ? ' · 오늘' : ''}</span>{!peerActive&&<span>{summary.completed} / {summary.total} 완료</span>}</div>
       </div>
     <div className="document-date-controls">
@@ -104,6 +100,8 @@ function PlannerDay({ initial, goalId,initialView='mine' }: { initial: PlanData;
         <span>{dayLabel(day).split(' ').at(-1)?.slice(0, 1)}</span><strong>{Number(day.slice(-2))}</strong>{!peerActive&&<small>{entries.length ? done + '/' + entries.length : '·'}{reviewed && <span className="review-dot" aria-hidden="true"/>}</small>}
       </button>;
     })}</nav></details>
+    {partner.data&&<PartnerControls state={partner.data} onChange={partner.refresh}/>}
+    {partner.error&&<div className="partner-read-error"><ErrorMessage error={partner.error}/><button className="text-button" onClick={partner.refresh}>연결 다시 확인</button></div>}
     {connection&&<div className="day-peer-tabs" role="tablist" aria-label="확인할 하루" onKeyDown={event=>{if(event.key==='ArrowRight'||event.key==='ArrowLeft'){event.preventDefault();const next=peerActive?'mine':'peer';void switchView(next).then(ready=>{if(ready)document.getElementById(next==='peer'?'peer-day-tab':'my-day-tab')?.focus();});}}}>
       <button id="my-day-tab" role="tab" aria-selected={!peerActive} aria-controls="my-day-panel" tabIndex={peerActive?-1:0} onClick={()=>switchView('mine')}>내 하루</button>
       <button id="peer-day-tab" role="tab" aria-selected={peerActive} aria-controls="peer-day-panel" tabIndex={peerActive?0:-1} onClick={()=>switchView('peer')}>{connection.nickname}의 하루</button>
@@ -111,7 +109,8 @@ function PlannerDay({ initial, goalId,initialView='mine' }: { initial: PlanData;
     <div id="peer-day-panel" role={connection?'tabpanel':undefined} aria-labelledby={connection?'peer-day-tab':undefined} hidden={!peerActive}>{peerActive&&partner.data&&<PeerDay day={data.day} state={partner.data}/>}</div>
     <div id="my-day-panel" role={connection?'tabpanel':undefined} aria-labelledby={connection?'my-day-tab':undefined} hidden={peerActive}>
     <section className="document-section daily-tasks" aria-labelledby="daily-tasks-title">
-      <div className="document-section-heading"><h2 id="daily-tasks-title">할 일 <span className="daily-completion">{summary.completed} / {summary.total} 완료</span></h2><Link className="text-button" href="/goals">목표 <ArrowRight size={14}/></Link></div>
+      <div className="document-section-heading"><h2 id="daily-tasks-title">할 일</h2><Link className="text-button" href="/goals">목표 <ArrowRight size={14}/></Link></div>
+      <TaskComposer day={data.day} data={data} goalId={goalId} save={saved} connection={connection} sharingKnown={known}/>
       {focus.notice&&<p className="document-notice" role="status">{focus.notice}</p>}
       {(!activeId||!data.tasks.some(task=>task.id===activeId))&&<FocusPanel controller={focus} onCompleteTask={data.tasks.some(task=>task.id===focus.pendingCompletion?.taskId)?completeTask:undefined}/>}
       <ul className="task-lines">{[
@@ -119,23 +118,16 @@ function PlannerDay({ initial, goalId,initialView='mine' }: { initial: PlanData;
         ...(completedTasks.length?[<li key="completed-heading" className="completed-tasks-heading"><button className="completed-tasks-toggle" type="button" aria-expanded={showCompleted} onClick={()=>void toggleCompleted()}><ChevronRight size={14} aria-hidden="true"/>완료 {completedTasks.length}개</button></li>]:[]),
         ...completedTasks.map(task=>taskLine(task,!showCompleted)),
       ]}</ul>
-      <TaskComposer day={data.day} data={data} goalId={goalId} save={saved} connection={connection} sharingKnown={known}/>
     </section>
-    <Reflection day={data.day} review={data.review} onTask={fromRecord} save={review => setData(previous => ({ ...previous, review, reviewedDays: [...new Set([...previous.reviewedDays, review.day])] }))}/>
+    <BatchPlanning data={data} onApplied={deferred}/>
+    <Routines day={data.day} goals={data.goals} works={data.works} onApplied={applied}/>
     <DayEvidence tasks={data.tasks} sessions={focus.data?.sessions??[]} day={data.day} onTask={fromRecord} onSaved={focus.refresh}/>
-    <div className="daily-planning-tools"><BatchPlanning data={data} onApplied={deferred}/><Routines day={data.day} goals={data.goals} works={data.works} onApplied={applied}/></div>
+    <Reflection day={data.day} review={data.review} onTask={fromRecord} save={review => setData(previous => ({ ...previous, review, reviewedDays: [...new Set([...previous.reviewedDays, review.day])] }))}/>
     <div className="past-record-link"><Link href="/revisit">지난 기록 다시 보기 <ArrowRight size={14} aria-hidden="true"/></Link></div>
     {flowNotice&&<p className="document-notice" role="status">{flowNotice}</p>}
     {nextTask&&<NextTask key={nextTask.key} source={nextTask} close={()=>{setNextTask(null);setFlowNotice('');}} save={task=>{if(task.day===data.day)saved(task);else if(data.week.includes(task.day))setData(previous=>({...previous,weekTasks:[...previous.weekTasks,{day:task.day,status:task.status}]}));}}/>}
     <WeeklyReview day={data.day} onTask={fromRecord}/>
     </div>
-    </div><aside className="daily-utility" aria-label="날짜와 집중 도구">
-      <PlannerCalendar day={data.day} today={data.today} navigate={navigate}/>
-      {!peerActive&&<section className="daily-focus-tool" aria-labelledby="daily-focus-title"><h2 id="daily-focus-title">집중 타이머</h2>
-        {focus.data?.session?<><FocusClock session={focus.data.session} serverNow={focus.data.server_now}/><p className="daily-focus-task">{focus.data.session.task_title||'진행 중인 할 일'}</p><a className="text-button" href="#focus">타이머와 메모 열기 <ArrowRight size={14}/></a></>:<><label className="sr-only" htmlFor="daily-focus-task">집중할 할 일</label><select id="daily-focus-task" value={selectedFocusTask} disabled={focus.loading||focus.busy||!focusChoices.length} onChange={event=>setFocusTaskId(event.target.value)}>{focusChoices.length?focusChoices.map(task=><option key={task.id} value={task.id}>{task.title}</option>):<option value="">할 일을 먼저 추가해주세요</option>}</select><button className="button secondary daily-focus-start" disabled={!selectedFocusTask||focus.loading||focus.busy} onClick={async()=>{await taskEditors.current.get(selectedFocusTask)?.start();}}><Play size={14}/>{focus.loading?'확인 중':focus.busy?'시작 중':'집중 시작'}</button><p className="field-hint">할 일의 타이머 설정으로 시작해요.</p></>}
-      </section>}
-      <section className="daily-connection" aria-label="공유 연결 설정">{partner.data&&<PartnerControls state={partner.data} onChange={partner.refresh}/>} {partner.error&&<div className="partner-read-error"><ErrorMessage error={partner.error}/><button className="text-button" onClick={partner.refresh}>연결 다시 확인</button></div>}</section>
-    </aside></div>
     {removing && <ConfirmDialog title="이 할 일을 삭제할까요?" description="이 할 일의 메모와 첨부 사진이 삭제돼요. 다른 날짜로 이어간 할 일과 하루 회고는 남아요." busy={deletion.busy} error={deletion.error} cancel={() => setRemoving(null)} confirm={() => deletion.run(async () => {
       if(!await prepareDocumentNavigation())return;
       await request('/api/planner/tasks/' + removing.id, 'DELETE');
@@ -143,14 +135,6 @@ function PlannerDay({ initial, goalId,initialView='mine' }: { initial: PlanData;
       setRemoving(null);
     })}/>}
   </div>;
-}
-
-function PlannerCalendar({day,today,navigate}:{day:string;today:string;navigate:(day:string)=>Promise<void>}) {
-  const [month,setMonth]=useState(()=>day.slice(0,7));
-  const first=new Date(month+'-01T00:00:00Z');
-  const offset=(first.getUTCDay()+6)%7,count=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
-  function move(amount:number){const next=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+amount,1)).toISOString().slice(0,7);if(next>='1900-01'&&next<='2100-12')setMonth(next);}
-  return <section className="planner-calendar" aria-label="월간 날짜 선택"><div className="planner-calendar-heading"><strong>{Number(month.slice(0,4))}년 {Number(month.slice(5))}월</strong><div><button className="planner-icon" aria-label="이전 달" disabled={month==='1900-01'} onClick={()=>move(-1)}><ChevronLeft size={13}/></button><button className="planner-icon" aria-label="다음 달" disabled={month==='2100-12'} onClick={()=>move(1)}><ChevronRight size={13}/></button></div></div><div className="planner-calendar-week" aria-hidden="true">{['월','화','수','목','금','토','일'].map(label=><span key={label}>{label}</span>)}</div><div className="planner-calendar-days">{Array.from({length:offset},(_,i)=><span key={'blank-'+i}/>)}{Array.from({length:count},(_,i)=>{const date=month+'-'+String(i+1).padStart(2,'0');return <button key={date} aria-current={date===day?'date':undefined} aria-label={dayLabel(date)+(date===today?' · 오늘':'')} className={date===today?'calendar-today':''} onClick={()=>void navigate(date)}>{i+1}</button>;})}</div><button className="text-button planner-calendar-today" onClick={()=>void navigate(today)}>오늘로 돌아가기</button></section>;
 }
 
 type TaskDraft = Omit<TaskInput, 'minutes'> & { minutes: string };
@@ -205,7 +189,7 @@ function TaskLine({ task, data, enabled, save, defer, remove, focus, seconds:ini
     save(result.task);
   } });
   useUnsavedGuard(saving.dirty, saving.saveNow);
-  useEffect(()=>registerCompletion?.(task.id,{collapse:()=>setExpanded(false),start:async()=>{if(photoBusy||transferring||!enabled||focus.loading||focus.busy||focus.data?.session)return;if(await saving.saveNow())await focus.start(task.id,seconds);},complete:async()=>{
+  useEffect(()=>registerCompletion?.(task.id,{collapse:()=>setExpanded(false),complete:async()=>{
     if(photoBusy||transferring||!enabled)return false;
     setTransferring(true);
     try {
@@ -223,7 +207,7 @@ function TaskLine({ task, data, enabled, save, defer, remove, focus, seconds:ini
   const isActive=focus.data?.session?.task_id===task.id;
   const shared=Boolean(task.shared&&connection&&task.shared_connection_id===connection.id);
   const photosShared=Boolean(shared&&task.photos_shared&&task.photo_connection_id===connection?.id);
-  const meta=[draft.status!=='planned'&&draft.status!=='completed'?TASK_STATES[draft.status]:null,data.goals.find(goal=>goal.id===goal_id)?.title,data.works.find(work=>work.id===work_id)?.title].filter(Boolean);
+  const meta=[draft.status!=='planned'&&draft.status!=='completed'?TASK_STATES[draft.status]:null,data.goals.find(goal=>goal.id===goal_id)?.title,data.works.find(work=>work.id===work_id)?.title,draft.minutes?draft.minutes+'분':null].filter(Boolean);
   async function toggleDetails(){if(expanded&&(photoBusy||!await prepareDocumentNavigation({preserveDrafts:true})))return;setExpanded(value=>!value);}
   return <li id={'task-'+task.id} className={'task-line task-' + draft.status+(isActive?' task-is-active':'')} hidden={collapsed&&task.status==='completed'&&draft.status==='completed'&&!saving.dirty&&!photoBusy&&!expanded&&!isActive}>
     <fieldset className="task-line-editor" disabled={transferring}>
@@ -231,11 +215,10 @@ function TaskLine({ task, data, enabled, save, defer, remove, focus, seconds:ini
       <button className="task-check" aria-label={(draft.title || '할 일') + (draft.status === 'completed' ? ' 완료 취소' : ' 완료하기')} aria-pressed={draft.status === 'completed'} onClick={() => status(draft.status === 'completed' ? 'planned' : 'completed')}>{draft.status === 'completed' ? <Check size={16}/> : draft.status === 'partial' ? <span className="partial-mark"/> : null}</button>
       <DocumentTextarea className="task-line-title" aria-label="할 일 제목" name="title" value={draft.title} maxLength={200} placeholder="할 일" onChange={event => update('title', event.target.value)} onBlur={saving.flush} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); saving.flush(); event.currentTarget.blur(); } }}/>
       {draft.important && <Star className="task-important" size={14} aria-label="중요"/>}
-      {draft.minutes&&<span className="task-estimate" aria-label={'예상 '+draft.minutes+'분'}>{draft.minutes}분</span>}
       {draft.status!=='completed'&&<button className="planner-icon task-start" aria-label={draft.title+' 타이머 시작'} title={isActive?'타이머 진행 중':(seconds?seconds/60+'분 집중 시작':'자유 시간 측정 시작')} disabled={focus.loading||focus.busy||Boolean(focus.data?.session)||!enabled} onClick={async()=>{if(await saving.saveNow())await focus.start(task.id,seconds);}}><Play size={15}/></button>}
       <button className="planner-icon task-more" type="button" aria-label={(draft.title||'할 일')+(expanded?' 상세 접기':' 상세 펼치기')} aria-expanded={expanded} aria-controls={detailsId} disabled={expanded&&photoBusy} onClick={()=>void toggleDetails()}><ChevronDown size={16}/></button>
     </div>
-    {!expanded&&(meta.length>0||draft.minutes||shared||task.shared&&!sharingKnown)&&<p className="task-meta-summary">{meta.length>0&&<span>{meta.join(' · ')}</span>}{draft.minutes&&<span className="task-mobile-minutes">{draft.minutes}분</span>}{task.shared&&!sharingKnown?<span>공유 상태 확인 중</span>:shared&&<span><UsersRound size={12} aria-hidden="true"/>{connection?.nickname}에게 공유 중 · 사진{photosShared?'도 공유 중':'은 비공개'}</span>}</p>}
+    {!expanded&&(meta.length>0||shared||task.shared&&!sharingKnown)&&<p className="task-meta-summary">{meta.length>0&&<span>{meta.join(' · ')}</span>}{task.shared&&!sharingKnown?<span>공유 상태 확인 중</span>:shared&&<span><UsersRound size={12} aria-hidden="true"/>{connection?.nickname}에게 공유 중 · 사진{photosShared?'도 공유 중':'은 비공개'}</span>}</p>}
     {!expanded&&draft.note&&<button type="button" className="task-note-preview" aria-label={(draft.title||'할 일')+' 메모 편집'} onClick={()=>{setExpanded(true);requestAnimationFrame(()=>note.current?.focus({preventScroll:true}));}}><span>{draft.note}</span></button>}
     </fieldset>
     {isActive&&<FocusPanel controller={focus} onCompleteTask={completeTask}/>}

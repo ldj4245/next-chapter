@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { RecordSearch } from '@/components/record-search';
 import { parseRecordSearch, type SearchKind } from '@/lib/record-search';
+import '@/app/record-search.css';
 
 export const metadata: Metadata = { title: '기록 검색' };
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
