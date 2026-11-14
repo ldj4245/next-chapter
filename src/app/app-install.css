@@ -1,0 +1,56 @@
+.app-install-banner {
+  display:flex; align-items:center; gap:12px; padding:12px 20px;
+  background:var(--accent-soft); border-bottom:1px solid var(--line);
+  color:var(--ink); min-width:0;
+}
+.app-install-mark,.app-install-guide-mark {
+  display:grid; place-items:center; flex-shrink:0; width:38px; height:38px;
+  border-radius:8px; background:var(--accent); color:white;
+}
+.app-install-mark>svg { width:26px; height:26px; }
+.app-install-copy { flex:1; min-width:0; }
+.app-install-copy>strong { display:block; font-size:13px; font-weight:600; line-height:1.6; }
+.app-install-copy>p { font-size:11px; line-height:1.7; color:var(--muted); margin-top:1px; }
+.app-install-action {
+  min-height:44px; padding:8px 2px; flex-shrink:0; color:var(--accent-hover);
+  background:none; border:0; font-size:13px; font-weight:600;
+}
+.app-install-action:hover { text-decoration:underline; text-underline-offset:4px; }
+.app-install-dismiss {
+  display:grid; place-items:center; width:44px; height:44px; margin-right:-12px;
+  flex-shrink:0; padding:0; background:none; border:0; color:var(--muted);
+}
+.app-install-dismiss:hover { color:var(--ink); }
+.app-install-complete { display:flex; gap:6px; align-items:center; color:var(--accent); font-size:13px; min-height:44px; }
+.login-page>.app-install-banner { width:min(440px,calc(100% - 32px)); margin:0 auto; border:1px solid var(--line); border-radius:var(--control-radius); }
+.app-install-guide {
+  position:relative; margin:auto; width:min(440px,calc(100vw - 32px));
+  max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow:auto; border:1px solid var(--line); border-radius:12px;
+  padding:28px 24px 18px; background:var(--surface); color:var(--ink);
+  box-shadow:0 12px 40px #30332e24;
+}
+.app-install-guide-mark { width:44px; height:44px; margin-bottom:22px; }
+.app-install-guide-mark>svg { width:30px; height:30px; }
+.app-install-guide>h2 { font-size:21px; font-weight:600; padding-right:4px; }
+.app-install-guide-description { font-size:14px; line-height:1.85; color:var(--muted); margin-top:9px; }
+.app-install-steps { display:grid; gap:20px; list-style:none; margin:28px 0 24px; padding:0; }
+.app-install-steps>li { display:flex; align-items:flex-start; gap:12px; font-size:14px; line-height:1.85; }
+.app-install-steps>li>span { flex-shrink:0; width:24px; height:24px; display:grid; place-items:center; margin-top:1px; background:var(--paper); border:1px solid var(--line); border-radius:50%; font-size:12px; color:var(--muted); }
+.app-install-steps strong { font-weight:600; }
+.app-install-steps strong>svg { display:inline; vertical-align:-3px; margin-inline:2px; }
+.app-install-steps small { display:block; color:var(--muted); font-size:12px; margin-top:3px; }
+.app-install-note { font-size:12px; line-height:1.85; color:var(--muted); margin-top:14px; }
+.app-install-note+.button { margin-top:16px; }
+.app-install-login-note { border-top:1px solid var(--line); padding-top:16px; margin-top:24px; }
+.app-install-native { margin-top:20px; }
+.app-install-guide-close { display:flex; margin:12px auto 0; min-width:80px; }
+.app-install-feedback { font-size:13px; color:var(--muted); border-left:2px solid var(--line-strong); padding-left:12px; margin-top:18px; line-height:1.85; }
+.app-install-address { margin-top:14px; font-size:12px; color:var(--muted); font-weight:400; }
+.app-install-address>input { font-size:16px; }
+html[data-mobile-keyboard] .app-install-banner { display:none; }
+@media(max-width:380px) {
+  .app-install-banner { gap:8px; padding-inline:16px; }
+  .app-install-mark { display:none; }
+  .app-install-guide { padding-inline:20px; }
+}

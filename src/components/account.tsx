@@ -13,6 +13,7 @@ import { prepareDocumentNavigation, useUnsavedGuard } from './editor';
 import { PartnerControls, usePartner, usePartnerResource } from './partner';
 import { ErrorMessage } from './ui';
 import { RecordArchives } from './record-archives';
+import { AppInstallSetting } from './app-install';
 
 type Operation = 'profile' | 'password' | 'logout' | 'export' | 'delete';
 
@@ -133,6 +134,7 @@ function AccountContent({ data, refresh, unavailable }: { data: AccountData; ref
         {partner.data && <fieldset disabled={fieldsDisabled || Boolean(partner.error)}><PartnerControls state={partner.data} variant="account" onChange={accountChanged}/></fieldset>}
       </div>
     </section>
+    <AppInstallSetting/>
     <section className="account-section" aria-labelledby={id + '-records'}>
       <div className="account-section-heading"><h2 id={id + '-records'}>내 기록 관리</h2><p>기록을 보관하거나 계정을 정리해요.</p></div>
       <div className="account-section-body">
