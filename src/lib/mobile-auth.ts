@@ -41,5 +41,5 @@ export async function authenticateMobileRequest(request: Request): Promise<Mobil
     throw new HttpError(502, '로그인 상태를 확인하지 못했어요. 잠시 후 다시 시도해주세요.');
   }
   if (!data.user || !data.user.id || !data.user.email || data.user.is_anonymous) throw new HttpError(401, '다시 로그인해주세요.');
-  return { client, request, user: { id: data.user.id, email: data.user.email } };
+  return { client, request, token, user: { id: data.user.id, email: data.user.email } };
 }

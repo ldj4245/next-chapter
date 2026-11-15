@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
 import { HttpError } from './api';
 import { InputError } from './domain';
+import { mobileSession } from './mobile-context';
 import { serverClient } from './supabase/server';
 import { PHOTO_MAIN_BYTES, PHOTO_MAX_PIXELS, PHOTO_THUMB_BYTES, PHOTO_UPLOAD_BYTES, photoURLs, validatePhotoUpload, type TaskPhoto } from './photos';
 
@@ -61,8 +62,13 @@ export async function taskPhotoPaths(client: Client, userId: string, taskId: str
 }
 export async function removePhotoFiles(client: Client, paths: string[]): Promise<void> {
   if (!paths.length) return;
-  const claims = await client.auth.getClaims(), actor = claims.data?.claims?.sub;
-  if (claims.error || typeof actor !== 'string' || paths.some(path => !path.startsWith(actor + '/')
+  const mobile = mobileSession();
+  let actor: string | undefined = mobile?.user.id;
+  if (!actor) {
+    const claims = await client.auth.getClaims();
+    actor = !claims.error && typeof claims.data?.claims?.sub === 'string' ? claims.data.claims.sub : undefined;
+  }
+  if (!actor || paths.some(path => !path.startsWith(actor + '/')
     || !/^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/(image|thumb)\.webp$/.test(path))) throw new HttpError(404, '사진을 찾을 수 없어요.');
   // Orphan SELECT is deliberately denied. The server removes only paths from
   // owner-filtered metadata/outbox after checking the current session prefix.

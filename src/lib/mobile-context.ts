@@ -6,6 +6,7 @@ export type MobileSession = {
   user: { id: string; email: string };
   client: SupabaseClient;
   request: Request;
+  token?: string;
 };
 
 const sessions = new AsyncLocalStorage<MobileSession>();

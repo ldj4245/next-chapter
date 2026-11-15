@@ -1,13 +1,16 @@
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { HttpError, requireSession } from './api';
 import { InputError } from './domain';
+import { mobileConfiguration } from './mobile-auth';
+import { mobileSession } from './mobile-context';
 
 export async function requireAccountSession() {
   const { user: claimedUser, client } = await requireSession();
+  const mobile = mobileSession();
   // Account actions must see a live Auth user, including deletion and email
   // changes, rather than relying on an otherwise valid cached JWT alone.
-  const { data, error } = await client.auth.getUser();
+  const { data, error } = mobile?.token ? await client.auth.getUser(mobile.token) : await client.auth.getUser();
   if (error) {
     if (error.status === 401 || error.status === 403 || error.code === 'user_not_found' || error.code === 'session_not_found') {
       throw new HttpError(401, '다시 로그인한 뒤 계정을 확인해주세요.');
@@ -17,6 +20,45 @@ export async function requireAccountSession() {
   }
   if (!data.user || data.user.id !== claimedUser.id || !data.user.email) throw new HttpError(401, '다시 로그인한 뒤 계정을 확인해주세요.');
   return { user: { id: data.user.id, email: data.user.email }, client };
+}
+
+function mapPasswordUpdateFailure(status: number | undefined, code: string | undefined): never {
+  if (code === 'weak_password') throw new InputError({ password: '추측하기 어려운 비밀번호로 다시 입력해주세요.' });
+  if (code === 'same_password') throw new InputError({ password: '이전 비밀번호와 다른 비밀번호를 입력해주세요.' });
+  if (status === 429 || code === 'over_request_rate_limit') throw new HttpError(429, '요청이 많아요. 잠시 후 다시 저장해주세요.');
+  if (status === 401 || status === 403) throw new HttpError(401, '다시 로그인한 뒤 비밀번호를 변경해주세요.');
+  throw new HttpError(502, '비밀번호를 변경하지 못했어요. 입력 내용은 유지되니 다시 저장해주세요.');
+}
+
+export async function updateAccountPassword(client: SupabaseClient, password: string): Promise<void> {
+  const mobile = mobileSession();
+  if (mobile) {
+    if (!mobile.token) throw new HttpError(401, '다시 로그인한 뒤 비밀번호를 변경해주세요.');
+    const { supabaseUrl, publishableKey } = mobileConfiguration();
+    let response: Response;
+    try {
+      response = await fetch(new URL('/auth/v1/user', supabaseUrl), {
+        method: 'PUT',
+        headers: {
+          apikey: publishableKey,
+          Authorization: 'Bearer ' + mobile.token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch {
+      throw new HttpError(502, '비밀번호를 변경하지 못했어요. 입력 내용은 유지되니 다시 저장해주세요.');
+    }
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({})) as { code?: unknown; error_code?: unknown };
+      const code = typeof payload.error_code === 'string' ? payload.error_code : typeof payload.code === 'string' ? payload.code : undefined;
+      mapPasswordUpdateFailure(response.status, code);
+    }
+    return;
+  }
+  const { error } = await client.auth.updateUser({ password });
+  if (error) mapPasswordUpdateFailure(error.status, error.code);
 }
 
 export async function verifyAccountPassword(userId: string, email: string, password: string): Promise<void> {
