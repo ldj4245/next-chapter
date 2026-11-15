@@ -2,6 +2,7 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { currentUser, serverClient, configured } from './supabase/server';
 import { InputError } from './domain';
+import { isAuthenticatedMobileRequest } from './mobile-context';
 
 export class HttpError extends Error {
   status: number;
@@ -23,6 +24,7 @@ export function failure(error: unknown) {
   return json({ error: '요청을 처리하지 못했어요. 작성한 내용은 유지되니 다시 시도해주세요.' }, 500);
 }
 export function assertOrigin(request: Request) {
+  if (isAuthenticatedMobileRequest(request)) return;
   const origin = request.headers.get('origin');
   if (origin && origin !== new URL(request.url).origin) throw new HttpError(403, '허용되지 않은 요청이에요.');
   if (request.headers.get('sec-fetch-site') === 'cross-site') throw new HttpError(403, '허용되지 않은 요청이에요.');
