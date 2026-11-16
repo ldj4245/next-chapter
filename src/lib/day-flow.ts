@@ -4,7 +4,7 @@ import type { FocusSession } from './focus.ts';
 import type { ReflectionDocument } from './reflection.ts';
 
 export type DayPreferences = { day: string; available_minutes: number | null };
-export type WeekReflection = { day: string; document: ReflectionDocument; created_at: string; updated_at: string };
+export type WeekReflection = { day: string; document: ReflectionDocument; revision?: number; created_at: string; updated_at: string };
 export function parseDayPreferences(value: unknown): DayPreferences {
   const input = object(value), day = parseDay(input.day);
   const minutes = input.available_minutes == null || input.available_minutes === '' ? null : Number(input.available_minutes);

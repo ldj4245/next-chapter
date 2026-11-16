@@ -22,7 +22,7 @@ export async function GET() {
       allRows((from,to)=>client.from('planner_routines').select(routineColumns).eq('user_id',user.id).order('created_at').order('id').range(from,to)),
       allRows((from,to)=>client.from('routine_occurrences').select('routine_id,day,task_id,created_at').eq('user_id',user.id).order('day').order('routine_id').range(from,to)),
       allRows((from,to)=>client.from('planner_day_preferences').select('day,available_minutes').eq('user_id',user.id).order('day').range(from,to)),
-      allRows((from,to)=>client.from('planner_week_reviews').select('day,document,created_at,updated_at').eq('user_id',user.id).order('day').range(from,to)),
+      allRows((from,to)=>client.from('planner_week_reviews').select('day,document,revision,created_at,updated_at').eq('user_id',user.id).order('day').range(from,to)),
       partnerState(client),
       allRows((from,to)=>client.from('task_photos').select(photoColumns).eq('user_id',user.id).eq('state','ready').order('created_at').order('id').range(from,to)),
       allRows((from,to)=>client.from('quick_memos').select('id,content,revision,converted_kind,converted_id,converted_day,converted_at,created_at,updated_at').eq('user_id',user.id).order('created_at').order('id').range(from,to)),

@@ -29,14 +29,15 @@ export function Reflection({ day, review, save, endpoint='/api/planner/review', 
   const popup = useRef<HTMLDivElement>(null), menuId = useId(), hintId = useId();
   const legacy = useRef(review ? parseReview(review) : { ...emptyReview });
   const revision=useRef(review?.revision??(review?1:0)),baseline=useRef(document);
+  const supportsRevision = endpoint === '/api/planner/review' || endpoint === '/api/planner/week-review';
   const [conflict,setConflict]=useState<{review:DayReview|null}|null>(null);
   const saving = useDocumentSave({ value: document, persist: async snapshot => {
     try{
-      const result = await request<{ review: DayReview }>(endpoint, 'PUT', { day, ...legacy.current, document: parseReflection(snapshot),...(endpoint==='/api/planner/review'?{revision:revision.current}:{}) });
+      const result = await request<{ review: DayReview }>(endpoint, 'PUT', { day, ...legacy.current, document: parseReflection(snapshot),...(supportsRevision?{revision:revision.current}:{}) });
       revision.current=result.review.revision??revision.current;baseline.current=snapshot;setConflict(null);save(result.review);
     }catch(cause){
-      if(endpoint==='/api/planner/review'&&cause instanceof RequestError&&cause.status===409){
-        try{const current=await request<{review:DayReview|null}>('/api/planner/review?day='+day);setConflict(current);}catch{/* Keep the local draft and the original conflict error. */}
+      if(supportsRevision&&cause instanceof RequestError&&cause.status===409){
+        try{const current=await request<{review:DayReview|null}>(endpoint+'?day='+day);setConflict(current);}catch{/* Keep the local draft and the original conflict error. */}
       }
       throw cause;
     }
