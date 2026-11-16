@@ -128,6 +128,7 @@ test('week-review PUT 핸들러는 같은 이전본의 중복 저장을 409로 �
     const fetchedJson = await fetchedAfterConflict.json();
     assert.equal(fetchedJson.review.revision, 1);
     assert.equal(fetchedJson.review.document.blocks[0].text, '기기 A에서 추가한 회고');
+    assert.deepEqual(Object.keys(fetchedJson.review).sort(), Object.keys(firstJson.review).sort());
 
     const updated = await send('기기 B에서 병합 후 최신 저장', 1);
     assert.equal(updated.status, 200);
@@ -135,4 +136,108 @@ test('week-review PUT 핸들러는 같은 이전본의 중복 저장을 409로 �
     assert.equal(updatedJson.review.revision, 2);
     assert.equal(updatedJson.review.document.blocks[0].text, '기기 B에서 병합 후 최신 저장');
   } finally { await db.close(); }
+});
+
+test('WeeklyBody refresh는 주간 실행과 주간 회고를 함께 다시 읽어 Reflection 키를 갱신한다', async () => {
+  const source = await readFile(new URL('../src/components/weekly-review.tsx', import.meta.url), 'utf8');
+  const slots = [], requests = [], reflections = [];
+  let cursor = 0;
+  const jsx = (type, props, key) => ({ type, props, key });
+  const weeklyMod = { exports: {} };
+  const initialWeek = {
+    week: ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-21', '2026-11-22'],
+    tasks: [],
+    sessions: [],
+    reviews: [],
+  };
+  const refreshedWeek = {
+    ...initialWeek,
+    tasks: [{ id: 't1', day: '2026-11-16', title: '새 할 일', status: 'completed' }],
+  };
+  const refreshedReview = {
+    day: '2026-11-16',
+    revision: 3,
+    document: { version: 1, blocks: [{ id: 'b2', kind: 'paragraph', text: '원격 최신 주간 회고', checked: false }] },
+    created_at: '2026-11-16T00:00:00Z',
+    updated_at: '2026-11-16T01:00:00Z',
+  };
+  const deps = {
+    react: {
+      useEffect() {},
+      useState(init) {
+        const idx = cursor++;
+        if (!(idx in slots)) slots[idx] = typeof init === 'function' ? init() : init;
+        return [slots[idx], v => { slots[idx] = typeof v === 'function' ? v(slots[idx]) : v; }];
+      },
+      useRef: init => ({ current: init }),
+    },
+    'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
+    'next/link': { default: 'Link' },
+    'lucide-react': { ArrowRight: 'ArrowRight', ChevronDown: 'ChevronDown', RefreshCw: 'RefreshCw' },
+    '@/lib/day-flow': {
+      durationLabel: s => `${s}초`,
+      executionSummary: tasks => ({ total: tasks.length, completed: tasks.filter(t => t.status === 'completed').length, seconds: 0, reasons: [] }),
+    },
+    '@/lib/goal-metrics': {},
+    '@/lib/planner': {
+      dayLabel: d => d,
+      emptyReview: { helped: '', hindered: '', gained: '', next_step: '' },
+      plannerWeek: d => [d],
+      REASONS: {},
+      TASK_STATES: { completed: '완료' },
+    },
+    '@/lib/reflection': { hasReflectionContent: () => false, reflectionOf: d => d },
+    './api-client': {
+      request: async url => {
+        requests.push(url);
+        if (url.startsWith('/api/planner/week?')) return refreshedWeek;
+        if (url.startsWith('/api/planner/week-review?')) return { review: refreshedReview };
+        throw new Error('Unexpected URL: ' + url);
+      },
+      useResource: () => ({ data: null, error: '', refresh() {} }),
+    },
+    './editor': { prepareDocumentNavigation: async () => true },
+    './reflection': {
+      Reflection: function ReflectionStub(props) { reflections.push(props); return null; },
+      ReflectionContent: 'ReflectionContent',
+    },
+    './ui': { ErrorMessage: 'ErrorMessage' },
+  };
+  vm.runInNewContext(ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
+  }).outputText, {
+    module: weeklyMod,
+    exports: weeklyMod.exports,
+    require: name => { assert.ok(name in deps, 'Unexpected dep: ' + name); return deps[name]; },
+  });
+
+  const walk = (node, pred) => {
+    if (!node || typeof node !== 'object') return null;
+    if (pred(node)) return node;
+    const ch = node.props?.children;
+    for (const child of Array.isArray(ch) ? ch : [ch]) {
+      const hit = walk(child, pred);
+      if (hit) return hit;
+    }
+    return null;
+  };
+  const render = () => {
+    cursor = 0;
+    return weeklyMod.exports.WeeklyBody({
+      data: initialWeek,
+      initialReview: { day: '2026-11-16', revision: 1, document: { version: 1, blocks: [{ id: 'b1', kind: 'paragraph', text: '이전 주간 회고', checked: false }] } },
+      onTask() {},
+    });
+  };
+  const firstTree = render();
+  const firstReflection = walk(firstTree, n => n.type === deps['./reflection'].Reflection);
+  assert.equal(firstReflection.key, '2026-11-16:0');
+  const refreshBtn = walk(firstTree, n => n.type === 'button' && n.props?.['aria-label'] === '이번 주 실행 기록 새로 읽기');
+  await refreshBtn.props.onClick();
+  assert.deepEqual(requests, ['/api/planner/week?day=2026-11-16', '/api/planner/week-review?day=2026-11-16']);
+  const nextTree = render();
+  const nextReflection = walk(nextTree, n => n.type === deps['./reflection'].Reflection);
+  assert.equal(nextReflection.key, '2026-11-16:1');
+  assert.equal(nextReflection.props.review.revision, 3);
+  assert.equal(nextReflection.props.review.document.blocks[0].text, '원격 최신 주간 회고');
 });

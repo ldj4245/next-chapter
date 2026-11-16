@@ -24,11 +24,21 @@ function WeeklyLoader({day,onTask}:{day:string;onTask:(text:string,day:string)=>
   return <WeeklyBody data={data.data} initialReview={review.data.review} onTask={onTask}/>;
 }
 export function WeeklyBody({data,initialReview,onTask}:{data:WeekData;initialReview:WeekReflection|null;onTask:(text:string,day:string)=>void}) {
-  const [snapshot,setSnapshot]=useState(data),[review,setReview]=useState<DayReview|null>(initialReview?{...emptyReview,...initialReview}:null),[error,setError]=useState('');
+  const [snapshot,setSnapshot]=useState(data),[review,setReview]=useState<DayReview|null>(initialReview?{...emptyReview,...initialReview}:null),[reviewVersion,setReviewVersion]=useState(0),[error,setError]=useState('');
   const summary=executionSummary(snapshot.tasks,snapshot.sessions);
   async function refresh() {
     if(!await prepareDocumentNavigation())return;
-    try{const result=await request<WeekData>('/api/planner/week?day='+snapshot.week[0]);setSnapshot(result);setError('');}catch(cause){setError(cause instanceof Error?cause.message:'기록을 다시 읽지 못했어요.');}
+    try{
+      const weekDay=snapshot.week[0];
+      const [weekData,weekReview]=await Promise.all([
+        request<WeekData>('/api/planner/week?day='+weekDay),
+        request<{review:WeekReflection|null}>('/api/planner/week-review?day='+weekDay),
+      ]);
+      setSnapshot(weekData);
+      setReview(weekReview.review?{...emptyReview,...weekReview.review}:null);
+      setReviewVersion(version=>version+1);
+      setError('');
+    }catch(cause){setError(cause instanceof Error?cause.message:'기록을 다시 읽지 못했어요.');}
   }
   return <div className="weekly-content">
     <div className="weekly-caption"><span>{dayLabel(snapshot.week[0],false)} — {dayLabel(snapshot.week[6],false)}</span><button className="planner-icon" onClick={refresh} aria-label="이번 주 실행 기록 새로 읽기"><RefreshCw size={14}/></button></div>
@@ -38,7 +48,7 @@ export function WeeklyBody({data,initialReview,onTask}:{data:WeekData;initialRev
       return <details key={date}><summary><time>{dayLabel(date)}</time><span>{tasks.length?tasks.filter(task=>task.status==='completed').length+'/'+tasks.length:'계획 없음'}</span><span>{seconds?durationLabel(seconds):'—'}</span></summary><div className="week-day-detail"><ul>{tasks.map(task=><li key={task.id}><span>{task.title}</span><small>{TASK_STATES[task.status]}</small></li>)}</ul>{sessions.filter(session=>session.memo).map(session=><p className="preserve-text" key={session.id}>{session.memo}</p>)}{daily&&hasReflectionContent(daily)&&<ReflectionContent document={reflectionOf(daily)}/>}<Link className="text-button" href={'/?day='+date}>그날 기록 열기 <ArrowRight size={14}/></Link></div></details>;
     })}</div>
     {summary.reasons.length>0&&<p className="weekly-reasons">기록한 어려움 · {summary.reasons.map(([reason,count])=>REASONS[reason as keyof typeof REASONS]+' '+count+'회').join(' / ')}</p>}
-    <Reflection day={snapshot.week[0]} review={review} endpoint="/api/planner/week-review" title="이번 주에 남기고 싶은 것" headingId="weekly-review-title" save={setReview} onTask={(text)=>onTask(text,snapshot.week[6])}/>
+    <Reflection key={snapshot.week[0]+':'+reviewVersion} day={snapshot.week[0]} review={review} endpoint="/api/planner/week-review" title="이번 주에 남기고 싶은 것" headingId="weekly-review-title" save={setReview} onTask={(text)=>onTask(text,snapshot.week[6])}/>
     <ErrorMessage error={error}/>
   </div>;
 }

@@ -8,7 +8,9 @@ export async function GET(request:Request) {
   try {
     const {user,client} = await requireSession(), day = weekStart(new URL(request.url).searchParams.get('day'));
     const result = await client.from('planner_week_reviews').select('day,document,revision,created_at,updated_at').eq('user_id',user.id).eq('day',day).maybeSingle();
-    plannerFailure(result.error); return json({review:result.data});
+    plannerFailure(result.error);
+    const review = result.data ? { ...result.data, helped: '', hindered: '', gained: '', next_step: '' } : null;
+    return json({ review });
   } catch(error) { return failure(error); }
 }
 export async function PUT(request:Request) {
